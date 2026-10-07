@@ -1,4 +1,3 @@
-
 import streamlit as st
 from langchain_groq import ChatGroq
 from langchain_core.messages import (
@@ -7,19 +6,19 @@ from langchain_core.messages import (
     AIMessage,
 )
 
-# Page configuration
+# ---------------- PAGE CONFIGURATION ----------------
 st.set_page_config(
     page_title="English to Kannada Translator",
     page_icon="🌐",
     layout="centered"
 )
 
-# Get API key from Streamlit Secrets
+# ---------------- GROQ API CONFIGURATION ----------------
 try:
     api_key = st.secrets["GROQ_API_KEY_1"]
 except (KeyError, FileNotFoundError):
     st.error(
-        "Groq API key not found. Configure "
+        "Groq API key not found. Please configure "
         "GROQ_API_KEY_1 in Streamlit Secrets."
     )
     st.stop()
@@ -31,54 +30,92 @@ llm = ChatGroq(
     temperature=0
 )
 
-# Custom styling
+# ---------------- CUSTOM CSS ----------------
 st.markdown("""
 <style>
+/* Main application background */
 .stApp {
     background: linear-gradient(135deg, #101828, #172554);
     color: white;
 }
-h1, h2, p, label {
+
+/* Main heading */
+h1, h2, h3, p {
+    color: white;
+}
+
+/* Input and output text areas */
+.stTextArea textarea {
+    background-color: white !important;
+    color: black !important;
+    -webkit-text-fill-color: black !important;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    font-size: 17px;
+}
+
+/* Text area labels */
+.stTextArea label {
     color: white !important;
 }
-.stTextArea textarea {
-    background-color: #ffffff;
-    color: #111827;
-    border-radius: 10px;
-}
+
+/* Buttons */
 .stButton > button {
     border-radius: 10px;
     font-weight: bold;
     width: 100%;
+    min-height: 45px;
+}
+
+/* Download button */
+.stDownloadButton > button {
+    width: 100%;
+    border-radius: 10px;
+    font-weight: bold;
+}
+
+/* Divider */
+hr {
+    border-color: #475569;
+}
+
+/* Footer */
+.footer {
+    text-align: center;
+    color: #cbd5e1;
+    font-size: 13px;
+    margin-top: 25px;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# Application heading
+# ---------------- HEADER ----------------
 st.title("🌐 English to Kannada Translator")
-st.write(
+
+st.markdown(
     "Translate English sentences into Kannada using "
-    "**Groq AI and Few-Shot Prompting**."
+    "**Groq AI and Few-Shot Prompting.**"
 )
 
 st.divider()
 
-# Input
-english_text = st.text_area(
-    "Enter English Text",
-    placeholder="Example: I am learning Python.",
-    height=150
-)
+# ---------------- SESSION STATE ----------------
+if "english_text" not in st.session_state:
+    st.session_state.english_text = ""
 
-# Translation function
+if "translation" not in st.session_state:
+    st.session_state.translation = ""
+
+# ---------------- TRANSLATION FUNCTION ----------------
 def translate_text(text):
     messages = [
         SystemMessage(
             content=(
                 "You are an English-to-Kannada translator. "
-                "Translate English text into natural Kannada. "
-                "Preserve the original meaning. "
-                "Return only the Kannada translation."
+                "Translate the given English text into natural, "
+                "grammatically correct Kannada. Preserve the "
+                "original meaning. Return only the Kannada "
+                "translation without explanations."
             )
         ),
 
@@ -105,7 +142,15 @@ def translate_text(text):
     response = llm.invoke(messages)
     return response.content
 
-# Buttons
+# ---------------- INPUT ----------------
+english_text = st.text_area(
+    "Enter English Text",
+    placeholder="Example: I am learning Python.",
+    height=130,
+    key="english_text"
+)
+
+# ---------------- BUTTONS ----------------
 col1, col2 = st.columns(2)
 
 with col1:
@@ -121,44 +166,51 @@ with col2:
         use_container_width=True
     )
 
-# Handle clear
+# ---------------- CLEAR FUNCTION ----------------
 if clear_button:
-    st.session_state["english_text"] = ""
-    st.session_state["translation"] = ""
+    st.session_state.english_text = ""
+    st.session_state.translation = ""
     st.rerun()
 
-# Handle translation
+# ---------------- TRANSLATE ACTION ----------------
 if translate_button:
     if not english_text.strip():
         st.warning("Please enter some English text.")
     else:
         try:
             with st.spinner("Translating into Kannada..."):
-                translation = translate_text(english_text)
+                result = translate_text(english_text)
 
-            st.session_state["translation"] = translation
+            st.session_state.translation = result
 
         except Exception as e:
             st.error(f"Translation failed: {e}")
 
-# Display result
-if st.session_state.get("translation"):
+# ---------------- OUTPUT ----------------
+if st.session_state.translation:
     st.divider()
+
     st.subheader("Kannada Translation 🇮🇳")
+
     st.text_area(
         "Translated Text",
-        value=st.session_state["translation"],
+        value=st.session_state.translation,
         height=150,
-        disabled=True
+        disabled=True,
+        key="kannada_output"
     )
 
     st.download_button(
-        "⬇️ Download Translation",
-        data=st.session_state["translation"],
+        label="⬇️ Download Translation",
+        data=st.session_state.translation,
         file_name="kannada_translation.txt",
         mime="text/plain",
         use_container_width=True
     )
 
-st.divider()
-st.caption("Powered by Groq AI • LangChain • Streamlit")
+# ---------------- FOOTER ----------------
+st.markdown("""
+<div class="footer">
+    Powered by Groq AI · LangChain · Streamlit
+</div>
+""", unsafe_allow_html=True)
